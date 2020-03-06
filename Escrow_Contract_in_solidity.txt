@@ -1,0 +1,80 @@
+pragma solidity ^0.4.11;
+
+contract test{
+  
+  uint balance;
+  address buyer;
+  address seller;
+  address private escrow;
+  bool buyerOk;
+  bool sellerOk;
+  bool delivery_confirmation;
+  uint start;
+   
+   modifier onlyBuyer{
+       require(msg.sender == buyer);
+       _;
+   }
+   
+   modifier onlySeller{
+       require(msg.sender == seller);
+       _;
+   }
+   
+   function check_blance() returns(uint){
+       return balance;
+   }
+   
+    function _Escrow(address _buyer, address _seller) public {
+        buyer = _buyer;
+        seller = _seller;
+        escrow = msg.sender;
+          
+      }
+      
+    function deposite() public onlyBuyer  payable{
+        //require(msg.sender == buyer);
+        balance += msg.value; 
+      }
+      
+    function payment_done() public onlyBuyer {
+        //require(msg.sender == buyer);
+        buyerOk = true;
+    }
+    
+    function delivery_ongoing() public onlySeller{
+        //require(msg.sender == seller);
+        start = now;
+        sellerOk = true;
+    }
+    
+    function confirmDelivery() public onlyBuyer{
+        //require(msg.sender == buyer);
+        delivery_confirmation = true;
+    }
+    
+    function payBalance() private {
+        // send seller the balance
+        if (seller.send(this.balance)) {
+            balance = 0;
+        } else {
+            throw;
+        }
+    }
+        
+    function pay_to_seller() public {
+          
+        require(msg.sender == escrow);
+        
+        if (buyerOk && sellerOk && delivery_confirmation){
+            payBalance();
+        }
+        else if (buyerOk && sellerOk && !delivery_confirmation && now > start + 30 seconds) {
+            // Freeze 30 seconds before release to buyer. The customer has to remember to call this method after freeze period.
+            selfdestruct(buyer);
+        }
+        else{
+                selfdestruct(buyer);
+        }
+    }
+}
